@@ -70,4 +70,4 @@ def launch():
 if (__name__ == '__main__'):
     sched = BlockingScheduler()
     sched.add_job(launch, 'interval', days=1)
-
+    sched.start()
