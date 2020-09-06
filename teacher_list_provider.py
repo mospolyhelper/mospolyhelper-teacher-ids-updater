@@ -3,6 +3,7 @@ import re
 import json
 import hashlib
 import requests
+import datetime
 
 from github import Github
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -69,5 +70,6 @@ def launch():
 
 if (__name__ == '__main__'):
     sched = BlockingScheduler()
-    sched.add_job(launch, 'interval', days=1)
+    sched.add_job(launch, 'interval', days=1, next_run_time=datetime.datetime.now())
     sched.start()
+
