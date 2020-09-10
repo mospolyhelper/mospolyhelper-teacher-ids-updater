@@ -67,7 +67,6 @@ def append_teacher_map(teacher_map: dict, from_id: int):
             return
         # to slow down
         sleep(0.5)
-        print(teacher_schedule + str(id))
         html = try_get(teacher_map, id, headers)
         if len(re.findall(regex_end, html)) != 0:
             return
