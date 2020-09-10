@@ -7,10 +7,14 @@ import datetime
 
 from github import Github
 from apscheduler.schedulers.blocking import BlockingScheduler
+#from dotenv import load_dotenv
+from time import sleep
 
 
 lk_url = 'https://e.mospolytech.ru/?p=rasp'
 lk_url_auth = 'https://e.mospolytech.ru/index.php'
+teacher_schedule = 'https://kaf.dmami.ru/lessons/teacher-html?id='
+teacher_schedule_referer = 'https://kaf.dmami.ru'
 github_repo = 'mospolyhelper/up-to-date-information'
 github_file = 'teacher_ids.json'
 
@@ -42,6 +46,55 @@ def get_teacher_map(html: str):
         del matches['0']
     return matches
 
+def get_max_id(teacher_map: dict):
+    max_id = -1
+    for key in teacher_map:
+        parsed = int(key)
+        if (parsed > max_id):
+            max_id = parsed
+    return max_id
+
+def append_teacher_map(teacher_map: dict, from_id: int):
+    id = from_id
+    fails = 0
+    regex = '<h3 class="teacher-info__name">(.*?)<\\/h3>'
+    regex_end = '<img.*?>'
+    headers = {
+        'referer': teacher_schedule_referer
+    }
+    while (True):
+        if (fails > 500):
+            return
+        # to slow down
+        sleep(0.5)
+        print(teacher_schedule + str(id))
+        html = try_get(teacher_map, id, headers)
+        if len(re.findall(regex_end, html)) != 0:
+            return
+        matches = re.findall(regex, html)
+        if len(matches) == 0:
+            id += 1
+            fails += 1
+            continue
+        fails = 0
+        teacher_map[str(id)] = matches[0]
+        id += 1
+
+def try_get(teacher_map: dict, id: int, headers):
+    i = 1
+    while True:
+        try:
+            html = requests.get(teacher_schedule + str(id), headers=headers)
+            return html.text
+        except Exception:
+            if i >= 64:
+                return ''
+            sleep(i)
+            i *= 2
+            continue
+        
+
+
 def upload_list_to_github(github_token: str, teacher_map: dict):
     text = json.dumps(teacher_map, ensure_ascii=False)
     text_bytes = text.encode('utf-8')
@@ -62,6 +115,8 @@ def launch():
     html = get_lk_html(session)
     
     teacher_map = get_teacher_map(html)
+    max_id = get_max_id(teacher_map)
+    append_teacher_map(teacher_map, max_id + 1)
 
     github_token = os.environ['GH_TOKEN']
     upload_list_to_github(github_token, teacher_map)
@@ -69,7 +124,8 @@ def launch():
 
 
 if (__name__ == '__main__'):
+    #load_dotenv(dotenv_path='var.env')
     sched = BlockingScheduler()
-    sched.add_job(launch, 'interval', days=1, next_run_time=datetime.datetime.now())
+    sched.add_job(launch, 'interval', days=2, next_run_time=datetime.datetime.now())
     sched.start()
 
