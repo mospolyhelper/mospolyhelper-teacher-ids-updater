@@ -7,8 +7,9 @@ import datetime
 
 from github import Github
 from apscheduler.schedulers.blocking import BlockingScheduler
-#from dotenv import load_dotenv
 from time import sleep
+
+#from dotenv import load_dotenv
 
 
 lk_url = 'https://e.mospolytech.ru/?p=rasp'
@@ -59,6 +60,7 @@ def append_teacher_map(teacher_map: dict, from_id: int):
     fails = 0
     regex = '<h3 class="teacher-info__name">(.*?)<\\/h3>'
     regex_end = '<img.*?>'
+    #regex_kaf = '<span class="label alert-info">(.*?)<\\/span>'
     headers = {
         'referer': teacher_schedule_referer
     }
@@ -68,16 +70,23 @@ def append_teacher_map(teacher_map: dict, from_id: int):
         # to slow down
         sleep(0.5)
         html = try_get(teacher_map, id, headers)
+
         if len(re.findall(regex_end, html)) != 0:
+            print('Not found page for id: ' + str(id))
             return
+
         matches = re.findall(regex, html)
+
         if len(matches) == 0:
+            print('Schedule is empty for id: ' + str(id))
             id += 1
             fails += 1
             continue
-        fails = 0
+
+        print('Successfully found for id: ' + str(id) + matches[0])
         teacher_map[str(id)] = matches[0]
         id += 1
+        fails = 0
 
 def try_get(teacher_map: dict, id: int, headers):
     i = 1
@@ -85,7 +94,8 @@ def try_get(teacher_map: dict, id: int, headers):
         try:
             html = requests.get(teacher_schedule + str(id), headers=headers)
             return html.text
-        except Exception:
+        except Exception as e:
+            print('Get id request exception: ' + repr(e))
             if i >= 64:
                 return ''
             sleep(i)
@@ -107,23 +117,29 @@ def upload_list_to_github(github_token: str, teacher_map: dict):
     repo.update_file(contents.path, "Autoupdate", text, contents.sha, branch="master")
 
 def launch():
-    print('Starting')
+    print('Started')
     login = os.environ['LK_LOGIN']
     password = os.environ['LK_PASSWORD']
     session = get_session_id(login, password)
     html = get_lk_html(session)
-    
+    print('Downloaded HTML with teacher list')
+
     teacher_map = get_teacher_map(html)
+    print('Teacher list parsed')
     max_id = get_max_id(teacher_map)
+    print('Max id of teacher list from the https://e.mospolytech.ru/?p=rasp is ' + str(max_id))
     append_teacher_map(teacher_map, max_id + 1)
+    print('Teacher list appended by continuous parsing of ids')
 
     github_token = os.environ['GH_TOKEN']
     upload_list_to_github(github_token, teacher_map)
+    print('Uploaded to github')
     print('Updated')
 
 
 if (__name__ == '__main__'):
     #load_dotenv(dotenv_path='var.env')
+    #launch()
     sched = BlockingScheduler()
     sched.add_job(launch, 'interval', days=2, next_run_time=datetime.datetime.now())
     sched.start()
