@@ -12,8 +12,8 @@ from time import sleep
 #from dotenv import load_dotenv
 
 
-lk_url = 'https://e.mospolytech.ru/?p=rasp'
-lk_url_auth = 'https://e.mospolytech.ru/index.php'
+lk_url = 'https://e.mospolytech.ru/old?p=rasp'
+lk_url_auth = 'https://e.mospolytech.ru/old'
 teacher_schedule = 'https://kaf.dmami.ru/lessons/teacher-html?id='
 teacher_schedule_referer = 'https://kaf.dmami.ru'
 github_repo = 'mospolyhelper/up-to-date-information'
